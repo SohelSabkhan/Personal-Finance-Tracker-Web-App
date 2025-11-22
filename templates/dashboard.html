@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Personal Finance Tracker</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="{{ url_for('dashboard') }}">💰 Finance Tracker</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link active" href="{{ url_for('dashboard') }}">Dashboard</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('add_transaction') }}">Add Transaction</a>
+                    </li>
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown">
+                            Export
+                        </a>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item" href="{{ url_for('export_csv', month=selected_month, year=selected_year, type=selected_type) }}">Download CSV</a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('export_pdf', month=selected_month, year=selected_year, type=selected_type) }}">Download PDF</a></li>
+                        </ul>
+                    </li>
+                    <li class="nav-item">
+                        <span class="nav-link">Hi, {{ current_user.username }}</span>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('logout') }}">Logout</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <!-- Filter Section -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">📊 Filter Transactions</h5>
+            </div>
+            <div class="card-body">
+                <form method="GET" action="{{ url_for('dashboard') }}" class="row g-3">
+                    <div class="col-md-3">
+                        <label for="month" class="form-label">Month</label>
+                        <select class="form-select" id="month" name="month">
+                            <option value="">All Months</option>
+                            <option value="1" {% if selected_month == '1' %}selected{% endif %}>January</option>
+                            <option value="2" {% if selected_month == '2' %}selected{% endif %}>February</option>
+                            <option value="3" {% if selected_month == '3' %}selected{% endif %}>March</option>
+                            <option value="4" {% if selected_month == '4' %}selected{% endif %}>April</option>
+                            <option value="5" {% if selected_month == '5' %}selected{% endif %}>May</option>
+                            <option value="6" {% if selected_month == '6' %}selected{% endif %}>June</option>
+                            <option value="7" {% if selected_month == '7' %}selected{% endif %}>July</option>
+                            <option value="8" {% if selected_month == '8' %}selected{% endif %}>August</option>
+                            <option value="9" {% if selected_month == '9' %}selected{% endif %}>September</option>
+                            <option value="10" {% if selected_month == '10' %}selected{% endif %}>October</option>
+                            <option value="11" {% if selected_month == '11' %}selected{% endif %}>November</option>
+                            <option value="12" {% if selected_month == '12' %}selected{% endif %}>December</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label for="year" class="form-label">Year</label>
+                        <select class="form-select" id="year" name="year">
+                            <option value="">All Years</option>
+                            {% for year_val in range(2020, 2031) %}
+                                <option value="{{ year_val }}" {% if selected_year == year_val|string %}selected{% endif %}>{{ year_val }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label for="type" class="form-label">Type</label>
+                        <select class="form-select" id="type" name="type">
+                            <option value="all" {% if selected_type == 'all' %}selected{% endif %}>All</option>
+                            <option value="income" {% if selected_type == 'income' %}selected{% endif %}>Income Only</option>
+                            <option value="expense" {% if selected_type == 'expense' %}selected{% endif %}>Expense Only</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3 d-flex align-items-end">
+                        <button type="submit" class="btn btn-primary me-2">Apply Filter</button>
+                        <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">Clear</a>
+                    </div>
+                </form>
+
+                <!-- Show current filter -->
+                {% if selected_month or selected_year or selected_type != 'all' %}
+                <div class="mt-3">
+                    <span class="badge bg-info">
+                        Filtered: 
+                        {% if selected_month %}
+                            {{ ['', 'January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'][selected_month|int] }}
+                        {% endif %}
+                        {% if selected_year %}{{ selected_year }}{% endif %}
+                        {% if selected_type != 'all' %} - {{ selected_type|capitalize }}{% endif %}
+                    </span>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Summary Cards -->
+        <div class="row mb-4">
+            <div class="col-md-4">
+                <div class="card text-white bg-success">
+                    <div class="card-body">
+                        <h5 class="card-title">💰 Total Income</h5>
+                        <h2 class="card-text">${{ "%.2f"|format(income) }}</h2>
+                        {% if selected_month and selected_year %}
+                            <small>For selected period</small>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card text-white bg-danger">
+                    <div class="card-body">
+                        <h5 class="card-title">💸 Total Expenses</h5>
+                        <h2 class="card-text">${{ "%.2f"|format(expenses) }}</h2>
+                        {% if selected_month and selected_year %}
+                            <small>For selected period</small>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card text-white {% if balance >= 0 %}bg-primary{% else %}bg-warning{% endif %}">
+                    <div class="card-body">
+                        <h5 class="card-title">📈 Balance</h5>
+                        <h2 class="card-text">${{ "%.2f"|format(balance) }}</h2>
+                        {% if selected_month and selected_year %}
+                            <small>For selected period</small>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Transactions Table -->
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h4 class="mb-0">Recent Transactions</h4>
+                <a href="{{ url_for('add_transaction') }}" class="btn btn-primary btn-sm">+ Add New</a>
+            </div>
+            <div class="card-body">
+                {% if transactions %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Type</th>
+                                    <th>Category</th>
+                                    <th>Amount</th>
+                                    <th>Description</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for transaction in transactions %}
+                                <tr>
+                                    <td>{{ transaction.date.strftime('%Y-%m-%d') }}</td>
+                                    <td>
+                                        {% if transaction.type == 'income' %}
+                                            <span class="badge bg-success">Income</span>
+                                        {% else %}
+                                            <span class="badge bg-danger">Expense</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ transaction.category }}</td>
+                                    <td class="{% if transaction.type == 'income' %}text-success{% else %}text-danger{% endif %}">
+                                        ${{ "%.2f"|format(transaction.amount) }}
+                                    </td>
+                                    <td>{{ transaction.description or '-' }}</td>
+                                    <td>
+                                        <a href="{{ url_for('edit_transaction', id=transaction.id) }}" class="btn btn-sm btn-warning">Edit</a>
+                                        <a href="{{ url_for('delete_transaction', id=transaction.id) }}" class="btn btn-sm btn-danger" onclick="return confirm('Are you sure you want to delete this transaction?')">Delete</a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <div class="mt-3">
+                        <p class="text-muted mb-0">Total Transactions: <strong>{{ transactions|length }}</strong></p>
+                    </div>
+                {% else %}
+                    <div class="text-center py-5">
+                        <p class="text-muted">No transactions found for the selected filter.</p>
+                        <a href="{{ url_for('add_transaction') }}" class="btn btn-primary">Add Transaction</a>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
